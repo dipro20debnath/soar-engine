@@ -1,0 +1,16 @@
+# SOAR Incident Containment Engine - Dependencies
+# Week 1: Core Framework
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+pydantic==2.11.3
+python-dotenv==1.1.0
+
+# Week 2: HTTP Client for Threat Intelligence APIs
+httpx==0.28.1
+
+# Week 3: Testing
+pytest==8.4.1
+pytest-asyncio==1.0.0
+
+# Utilities
+python-dateutil==2.9.0
