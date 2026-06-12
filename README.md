@@ -1,4 +1,4 @@
-# 🛡️ SOAR Incident Containment Engine
+# SOAR Incident Containment Engine
 
 > **Security Orchestration, Automation, and Response (SOAR)** engine for automated threat detection, enrichment, and containment.
 
@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green.svg)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 📋 Overview
+## Overview
 
 This project builds a custom SOAR engine that:
 1. **Receives** security alerts from SIEM systems via webhooks
@@ -16,15 +16,15 @@ This project builds a custom SOAR engine that:
 5. **Executes** automated response playbooks based on risk scoring *(Week 3)*
 6. **Visualizes** everything in a real-time SOC dashboard *(Week 4)*
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-SIEM Alert → Webhook Receiver → Normalizer → IoC Extraction → Enrichment → Risk Scoring → Playbook Engine → Containment Actions
-                                                                                                                    ↓
-                                                                                              Dashboard ← Database ←┘
+SIEM Alert --> Webhook Receiver --> Normalizer --> IoC Extraction --> Enrichment --> Risk Scoring --> Playbook Engine --> Containment Actions
+                                                                                                                            |
+                                                                                              Dashboard <-- Database <------+
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.10 or higher
@@ -34,7 +34,7 @@ SIEM Alert → Webhook Receiver → Normalizer → IoC Extraction → Enrichment
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/dipro20debnath/soar-engine.git
 cd soar-engine
 
 # Create virtual environment
@@ -82,7 +82,7 @@ python -m simulator.generate_alerts --type malware_detected --count 3 --delay 2
 python -m pytest tests/ -v
 ```
 
-## 📡 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -112,7 +112,7 @@ curl -X POST http://localhost:8000/api/alerts \
   }'
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 soar-engine/
@@ -143,22 +143,20 @@ soar-engine/
 └── README.md
 ```
 
-## 🗓️ Development Roadmap
+## Development Roadmap
 
 - [x] **Week 1**: Webhook Ingestion & Data Normalization
 - [ ] **Week 2**: Automated Threat Enrichment (AbuseIPDB, VirusTotal)
 - [ ] **Week 3**: Orchestration Playbook Execution & Containment
 - [ ] **Week 4**: SOC Dashboard & Deployment
 
-## 👥 Team
+## Author
 
-| Member | Branch | Role |
-|--------|--------|------|
-| Member A (Team Lead) | `member-a` | FastAPI Core, Webhook Endpoints, Project Config |
-| Member B | `member-b` | Data Models, Alert Normalization, IoC Extraction |
-| Member C | `member-c` | SIEM Simulator, Test Data Generation |
-| Member D | `member-d` | Database/Store, Unit Tests, Documentation |
+**Gobindo Debnath Dipro**
+- Cyber Security Intern @ Infotact Solutions (Batch-18)
+- GitHub: [@dipro20debnath](https://github.com/dipro20debnath)
+- Email: diprodebnath200@gmail.com
 
-## 📄 License
+## License
 
 This project is part of the Infotact Solutions Technical Internship Program.

@@ -335,11 +335,11 @@ def send_alert(alert_data: dict, base_url: str = SOAR_URL) -> dict:
         response.raise_for_status()
         return response.json()
     except httpx.ConnectError:
-        print(f"  ❌ Connection failed! Is the SOAR server running at {base_url}?")
+        print(f"  [ERROR] Connection failed! Is the SOAR server running at {base_url}?")
         print(f"     Start it with: uvicorn app.main:app --reload")
         return {"error": "connection_failed"}
     except Exception as e:
-        print(f"  ❌ Error: {e}")
+        print(f"  [ERROR] Error: {e}")
         return {"error": str(e)}
 
 
@@ -381,7 +381,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 60)
-    print("  🔫 SIEM Alert Simulator")
+    print("  [*] SIEM Alert Simulator")
     print(f"  Target:  {args.url}")
     print(f"  Type:    {args.type}")
     print(f"  Count:   {args.count}")
@@ -412,7 +412,7 @@ def main():
         result = send_alert(alert_data, args.url)
 
         if "error" not in result:
-            print(f"           ✅ Alert ID: {result.get('alert_id', 'N/A')} | "
+            print(f"           [OK] Alert ID: {result.get('alert_id', 'N/A')} | "
                   f"Severity: {result.get('severity', 'N/A')} | "
                   f"IoCs: {result.get('ioc_count', 0)}")
             success_count += 1
@@ -428,7 +428,7 @@ def main():
 
     print()
     print("=" * 60)
-    print(f"  📊 Results: {success_count} sent, {fail_count} failed")
+    print(f"  [RESULTS] {success_count} sent, {fail_count} failed")
     print("=" * 60)
 
 
