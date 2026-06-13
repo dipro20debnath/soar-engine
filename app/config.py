@@ -33,6 +33,13 @@ class Settings:
     # When True, uses simulated API responses instead of real APIs
     SIMULATION_MODE: bool = os.getenv("SIMULATION_MODE", "true").lower() == "true"
 
+    # ── Enrichment Settings ─────────────────────────────
+    ENRICHMENT_ENABLED: bool = os.getenv("ENRICHMENT_ENABLED", "true").lower() == "true"
+    ENRICHMENT_CACHE_TTL: int = int(os.getenv("ENRICHMENT_CACHE_TTL", "3600"))  # seconds
+    ABUSEIPDB_MAX_AGE_DAYS: int = int(os.getenv("ABUSEIPDB_MAX_AGE_DAYS", "90"))
+    ABUSEIPDB_RATE_LIMIT: int = int(os.getenv("ABUSEIPDB_RATE_LIMIT", "1000"))  # per day
+    VIRUSTOTAL_RATE_LIMIT: int = int(os.getenv("VIRUSTOTAL_RATE_LIMIT", "500"))  # per day
+
     # ── Application Info ────────────────────────────────
     APP_NAME: str = "SOAR Incident Containment Engine"
     APP_VERSION: str = "1.0.0"
