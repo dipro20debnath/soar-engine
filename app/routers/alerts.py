@@ -1,7 +1,7 @@
-"""SOAR Engine - Alerts Query Router
+"""SOAR Engine - Alerts Query & Enrichment Router
 
 Provides endpoints for querying, filtering, and viewing processed alerts.
-Used by the dashboard and SOC analysts to monitor alert status.
+Also provides manual enrichment triggers and enrichment cache management.
 """
 
 import logging
@@ -16,11 +16,25 @@ from app.models.alert import (
     AlertType,
     AlertStatus,
 )
+from app.models.enrichment import EnrichmentResult
+from app.services.enrichment import (
+    EnrichmentService,
+    clear_enrichment_cache,
+    get_cache_stats,
+)
+from app.services.risk_scorer import (
+    calculate_risk_score,
+    get_risk_level,
+    get_risk_summary,
+)
 from app.db.store import alert_store
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["Alerts"])
+
+# Shared enrichment service instance
+_enrichment_service = EnrichmentService()
 
 
 @router.get(
@@ -44,7 +58,7 @@ async def list_alerts(
         limit=limit,
         offset=offset,
     )
-    
+
     return [
         AlertSummary(
             alert_id=a.alert_id,
@@ -95,3 +109,107 @@ async def delete_alert(alert_id: str) -> dict:
     if alert_store.delete_alert(alert_id):
         return {"success": True, "message": f"Alert {alert_id} deleted"}
     raise HTTPException(status_code=404, detail=f"Alert not found: {alert_id}")
+
+
+# ── Enrichment Endpoints ─────────────────────────────
+
+@router.post(
+    "/enrich/{alert_id}",
+    summary="Manually Enrich Alert",
+    description="Trigger threat intelligence enrichment for an existing alert. Re-queries AbuseIPDB and VirusTotal for all IoCs.",
+    tags=["Enrichment"],
+)
+async def enrich_alert(alert_id: str) -> dict:
+    """Manually trigger enrichment for an alert that was stored without enrichment.
+
+    This is useful for:
+    - Re-enriching alerts after adding new API keys
+    - Enriching alerts that were received when enrichment was disabled
+    - Getting updated threat intel for old alerts
+
+    Args:
+        alert_id: The alert ID to enrich.
+
+    Returns:
+        Dictionary with enrichment results, risk score, and risk summary.
+    """
+    alert = alert_store.get_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Alert not found: {alert_id}")
+
+    if len(alert.iocs) == 0:
+        return {
+            "success": True,
+            "alert_id": alert_id,
+            "message": "No IoCs found in this alert — nothing to enrich",
+            "risk_score": None,
+        }
+
+    # Run enrichment
+    enrichment = _enrichment_service.enrich(alert)
+
+    # Calculate risk score
+    risk_score = calculate_risk_score(alert, enrichment)
+    risk_level = get_risk_level(risk_score)
+
+    # Update the alert in the store
+    alert.risk_score = risk_score
+    alert.enrichment_data = {
+        "threat_level": enrichment.overall_threat_level,
+        "confidence": enrichment.confidence,
+        "ip_results_count": len(enrichment.ip_results),
+        "hash_results_count": len(enrichment.hash_results),
+        "notes": enrichment.notes,
+        "enriched_at": enrichment.enriched_at.isoformat(),
+    }
+    alert.status = AlertStatus.ENRICHED
+    if f"risk:{risk_level}" not in alert.tags:
+        alert.tags.append(f"risk:{risk_level}")
+    alert_store.update_alert(alert)
+
+    logger.info(
+        f"Manual enrichment for {alert_id}: "
+        f"risk_score={risk_score}, level={risk_level}"
+    )
+
+    return {
+        "success": True,
+        "alert_id": alert_id,
+        "risk_score": risk_score,
+        "risk_summary": get_risk_summary(risk_score),
+        "threat_level": enrichment.overall_threat_level,
+        "confidence": enrichment.confidence,
+        "ip_lookups": len(enrichment.ip_results),
+        "hash_lookups": len(enrichment.hash_results),
+        "notes": enrichment.notes,
+    }
+
+
+@router.get(
+    "/enrichment/cache",
+    summary="Enrichment Cache Stats",
+    description="View the current enrichment cache statistics.",
+    tags=["Enrichment"],
+)
+async def enrichment_cache_stats() -> dict:
+    """Get statistics about the enrichment cache."""
+    return {
+        "success": True,
+        **get_cache_stats(),
+    }
+
+
+@router.delete(
+    "/enrichment/cache",
+    summary="Clear Enrichment Cache",
+    description="Clear all cached enrichment results. New lookups will query the APIs again.",
+    tags=["Enrichment"],
+)
+async def clear_cache() -> dict:
+    """Clear the enrichment cache to force fresh API lookups."""
+    clear_enrichment_cache()
+    return {
+        "success": True,
+        "message": "Enrichment cache cleared successfully",
+    }
+
