@@ -94,16 +94,33 @@ class AlertStore:
         # Apply pagination
         return alerts[offset: offset + limit]
 
-    def update_alert(self, alert_id: str, **updates) -> Optional[NormalizedAlert]:
-        """Update specific fields of an existing alert.
-        
+    def update_alert(self, alert_or_id, **updates) -> Optional[NormalizedAlert]:
+        """Update an existing alert.
+
+        Can be called two ways:
+        1. update_alert(normalized_alert)  — replace with full alert object
+        2. update_alert(alert_id, field1=val1, ...)  — update specific fields
+
         Args:
-            alert_id: The ID of the alert to update.
-            **updates: Keyword arguments of fields to update.
-            
+            alert_or_id: A NormalizedAlert object or an alert_id string.
+            **updates: Keyword arguments of fields to update (only when passing id).
+
         Returns:
             The updated alert, or None if not found.
         """
+        # Called with a full NormalizedAlert object
+        if isinstance(alert_or_id, NormalizedAlert):
+            alert = alert_or_id
+            if alert.alert_id in self._alerts:
+                self._alerts[alert.alert_id] = alert
+                logger.info(f"Alert replaced: {alert.alert_id}")
+                return alert
+            else:
+                logger.warning(f"Alert not found for update: {alert.alert_id}")
+                return None
+
+        # Called with alert_id + keyword updates
+        alert_id = alert_or_id
         alert = self._alerts.get(alert_id)
         if not alert:
             logger.warning(f"Alert not found for update: {alert_id}")
@@ -219,6 +236,23 @@ class AlertStore:
         """Remove all alerts from the store."""
         self._alerts.clear()
         logger.info("AlertStore cleared")
+
+    def get_alerts_by_risk_level(self, min_score: float = 0, max_score: float = 100) -> list[NormalizedAlert]:
+        """Get alerts filtered by risk score range.
+
+        Args:
+            min_score: Minimum risk score (inclusive).
+            max_score: Maximum risk score (inclusive).
+
+        Returns:
+            List of alerts with risk scores in the given range, sorted highest first.
+        """
+        alerts = [
+            a for a in self._alerts.values()
+            if a.risk_score is not None and min_score <= a.risk_score <= max_score
+        ]
+        alerts.sort(key=lambda a: a.risk_score or 0, reverse=True)
+        return alerts
 
 
 # ── Global store instance ────────────────────────────────

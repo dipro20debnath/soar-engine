@@ -86,13 +86,16 @@ python -m pytest tests/ -v
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/alerts` | Receive a single SIEM alert |
+| `POST` | `/api/alerts` | Receive a single SIEM alert (auto-enriched) |
 | `POST` | `/api/alerts/bulk` | Receive multiple alerts at once |
 | `GET` | `/api/alerts` | List alerts (with filtering) |
-| `GET` | `/api/alerts/{id}` | Get alert details |
+| `GET` | `/api/alerts/{id}` | Get alert details with enrichment data |
 | `GET` | `/api/stats` | Get alert statistics |
 | `DELETE` | `/api/alerts/{id}` | Delete an alert |
-| `GET` | `/health` | Health check |
+| `POST` | `/api/enrich/{id}` | Manually trigger enrichment for an alert |
+| `GET` | `/api/enrichment/cache` | View enrichment cache statistics |
+| `DELETE` | `/api/enrichment/cache` | Clear enrichment cache |
+| `GET` | `/health` | Health check with enrichment status |
 
 ### Example: Send an Alert
 
@@ -116,37 +119,41 @@ curl -X POST http://localhost:8000/api/alerts \
 
 ```
 soar-engine/
-├── app/                          # Main application
-│   ├── main.py                   # FastAPI entry point
-│   ├── config.py                 # Environment configuration
-│   ├── models/                   # Pydantic data models
-│   │   ├── alert.py             # Alert schemas (Raw, Normalized, Summary)
-│   │   └── enrichment.py        # Enrichment result schemas
-│   ├── routers/                  # API route handlers
-│   │   ├── webhooks.py          # POST /api/alerts (webhook receiver)
-│   │   └── alerts.py            # GET /api/alerts (query & stats)
-│   ├── services/                 # Business logic
-│   │   └── normalizer.py        # Multi-SIEM alert normalization
-│   ├── playbooks/                # Response playbooks (Week 3)
-│   ├── containment/              # Containment modules (Week 3)
-│   └── db/                       # Data persistence
-│       └── store.py             # In-memory alert store
-├── simulator/                    # SIEM alert simulator
-│   └── generate_alerts.py       # Generates fake alerts for testing
-├── dashboard/                    # Web dashboard (Week 4)
-├── tests/                        # Unit tests
-│   ├── test_normalizer.py
-│   └── test_store.py
-├── requirements.txt
-├── .env.example
-├── .gitignore
-└── README.md
+|-- app/                          # Main application
+|   |-- main.py                   # FastAPI entry point
+|   |-- config.py                 # Environment configuration
+|   |-- models/                   # Pydantic data models
+|   |   |-- alert.py             # Alert schemas (Raw, Normalized, Summary)
+|   |   |-- enrichment.py        # Enrichment result schemas
+|   |-- routers/                  # API route handlers
+|   |   |-- webhooks.py          # POST /api/alerts (webhook + enrichment pipeline)
+|   |   |-- alerts.py            # GET /api/alerts (query, stats, manual enrichment)
+|   |-- services/                 # Business logic
+|   |   |-- normalizer.py        # Multi-SIEM alert normalization
+|   |   |-- enrichment.py        # AbuseIPDB + VirusTotal clients
+|   |   |-- risk_scorer.py       # Weighted risk scoring algorithm
+|   |-- playbooks/                # Response playbooks (Week 3)
+|   |-- containment/              # Containment modules (Week 3)
+|   |-- db/                       # Data persistence
+|       |-- store.py             # In-memory alert store
+|-- simulator/                    # SIEM alert simulator
+|   |-- generate_alerts.py       # Generates fake alerts for testing
+|-- dashboard/                    # Web dashboard (Week 4)
+|-- tests/                        # Unit tests (91 tests)
+|   |-- test_normalizer.py       # 27 normalizer tests
+|   |-- test_store.py            # 14 store tests
+|   |-- test_enrichment.py       # 20 enrichment tests
+|   |-- test_risk_scorer.py      # 30 risk scoring tests
+|-- requirements.txt
+|-- .env.example
+|-- .gitignore
+|-- README.md
 ```
 
 ## Development Roadmap
 
 - [x] **Week 1**: Webhook Ingestion & Data Normalization
-- [ ] **Week 2**: Automated Threat Enrichment (AbuseIPDB, VirusTotal)
+- [x] **Week 2**: Automated Threat Enrichment (AbuseIPDB, VirusTotal, Risk Scoring)
 - [ ] **Week 3**: Orchestration Playbook Execution & Containment
 - [ ] **Week 4**: SOC Dashboard & Deployment
 
