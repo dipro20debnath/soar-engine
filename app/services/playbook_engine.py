@@ -28,6 +28,8 @@ from app.playbooks.default import DefaultPlaybook
 from app.playbooks.brute_force import BruteForcePlaybook
 from app.playbooks.malware_detected import MalwareDetectedPlaybook
 from app.playbooks.suspicious_login import SuspiciousLoginPlaybook
+from app.playbooks.port_scan import PortScanPlaybook
+from app.playbooks.data_exfiltration import DataExfiltrationPlaybook
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,8 @@ class PlaybookEngine:
             AlertType.BRUTE_FORCE: BruteForcePlaybook(),
             AlertType.MALWARE_DETECTED: MalwareDetectedPlaybook(),
             AlertType.SUSPICIOUS_LOGIN: SuspiciousLoginPlaybook(),
+            AlertType.PORT_SCAN: PortScanPlaybook(),
+            AlertType.DATA_EXFILTRATION: DataExfiltrationPlaybook(),
         }
 
         registered_types = [at.value for at in self._registry]
