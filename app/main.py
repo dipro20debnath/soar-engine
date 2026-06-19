@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.routers import webhooks, alerts
+from app.routers import webhooks, alerts, playbooks
 
 # ── Logging Setup ──────────────────────────────────────
 logging.basicConfig(
@@ -75,6 +75,7 @@ app.add_middleware(
 # ── Register Routers ──────────────────────────────────
 app.include_router(webhooks.router)
 app.include_router(alerts.router)
+app.include_router(playbooks.router)
 
 
 # ── Root Endpoint ─────────────────────────────────────
@@ -97,6 +98,14 @@ async def root():
             "statistics": "GET /api/stats",
             "enrich_alert": "POST /api/enrich/{alert_id}",
             "cache_stats": "GET /api/enrichment/cache",
+            "playbooks": "GET /api/playbooks",
+            "playbook_history": "GET /api/playbooks/history",
+            "pending_approvals": "GET /api/playbooks/pending",
+            "approve_alert": "POST /api/playbooks/approve/{alert_id}",
+            "reject_alert": "POST /api/playbooks/reject/{alert_id}",
+            "blocklist": "GET /api/containment/blocklist",
+            "isolated_instances": "GET /api/containment/isolated",
+            "containment_summary": "GET /api/containment/summary",
         },
     }
 

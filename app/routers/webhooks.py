@@ -3,7 +3,7 @@
 Handles incoming SIEM alert webhooks at POST /api/alerts.
 This is the entry point for all alerts into the SOAR pipeline.
 
-Pipeline: Receive → Normalize → Enrich → Score → Store
+Pipeline: Receive → Normalize → Enrich → Score → Playbook → Contain → Store
 """
 
 import logging
@@ -16,6 +16,7 @@ from app.models.alert import RawAlert, NormalizedAlert, AlertStatus
 from app.services.normalizer import normalize_alert
 from app.services.enrichment import EnrichmentService
 from app.services.risk_scorer import calculate_risk_score, get_risk_level
+from app.services.playbook_engine import playbook_engine
 from app.config import settings
 from app.db.store import alert_store
 
@@ -39,6 +40,8 @@ class WebhookResponse(BaseModel):
     risk_score: Optional[float] = None
     risk_level: Optional[str] = None
     threat_level: Optional[str] = None
+    playbook_name: Optional[str] = None
+    response_actions: list[str] = Field(default_factory=list)
     enrichment_notes: list[str] = Field(default_factory=list)
     received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -81,26 +84,27 @@ def _process_alert(source: str, payload: dict[str, Any]) -> tuple[NormalizedAler
     risk_score = None
     threat_level = None
     notes = []
+    enrichment_result = None  # Shared across pipeline steps
 
     # Step 2: Enrich (if enrichment is enabled)
     if settings.ENRICHMENT_ENABLED and len(normalized.iocs) > 0:
         try:
-            enrichment = _enrichment_service.enrich(normalized)
+            enrichment_result = _enrichment_service.enrich(normalized)
 
             # Step 3: Calculate risk score
-            risk_score = calculate_risk_score(normalized, enrichment)
-            threat_level = enrichment.overall_threat_level
-            notes = enrichment.notes
+            risk_score = calculate_risk_score(normalized, enrichment_result)
+            threat_level = enrichment_result.overall_threat_level
+            notes = enrichment_result.notes
 
             # Step 4: Update the alert with enrichment data
             normalized.risk_score = risk_score
             normalized.enrichment_data = {
                 "threat_level": threat_level,
-                "confidence": enrichment.confidence,
-                "ip_results_count": len(enrichment.ip_results),
-                "hash_results_count": len(enrichment.hash_results),
+                "confidence": enrichment_result.confidence,
+                "ip_results_count": len(enrichment_result.ip_results),
+                "hash_results_count": len(enrichment_result.hash_results),
                 "notes": notes,
-                "enriched_at": enrichment.enriched_at.isoformat(),
+                "enriched_at": enrichment_result.enriched_at.isoformat(),
             }
             normalized.status = AlertStatus.ENRICHED
             normalized.tags.append(f"risk:{get_risk_level(risk_score)}")
@@ -114,6 +118,17 @@ def _process_alert(source: str, payload: dict[str, Any]) -> tuple[NormalizedAler
             logger.error(f"Enrichment failed for {normalized.alert_id}: {e}")
             normalized.status = AlertStatus.NORMALIZED
             notes.append(f"Enrichment failed: {str(e)}")
+
+    # Step 5: Execute playbook (automated response)
+    if normalized.risk_score is not None:
+        try:
+            actions = playbook_engine.execute(normalized, enrichment_result)
+            logger.info(
+                f"Playbook '{normalized.playbook_name}' executed for "
+                f"{normalized.alert_id}: {len(actions)} actions"
+            )
+        except Exception as e:
+            logger.error(f"Playbook execution failed for {normalized.alert_id}: {e}")
 
     return normalized, risk_score, threat_level, notes
 
@@ -165,6 +180,8 @@ async def receive_alert(raw_alert: RawAlert) -> WebhookResponse:
             risk_score=risk_score,
             risk_level=get_risk_level(risk_score) if risk_score is not None else None,
             threat_level=threat_level,
+            playbook_name=normalized.playbook_name,
+            response_actions=normalized.response_actions,
             enrichment_notes=notes,
         )
 
