@@ -10,13 +10,14 @@ Run with:
 """
 
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 
 from app.config import settings
 from app.routers import webhooks, alerts, playbooks
@@ -77,6 +78,12 @@ app.include_router(webhooks.router)
 app.include_router(alerts.router)
 app.include_router(playbooks.router)
 
+# ── Serve Dashboard Static Files ──────────────────────
+DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "dashboard"
+if DASHBOARD_DIR.exists():
+    app.mount("/dashboard", StaticFiles(directory=str(DASHBOARD_DIR), html=True), name="dashboard")
+    logger.info(f"Dashboard mounted at /dashboard from {DASHBOARD_DIR}")
+
 
 # ── Root Endpoint ─────────────────────────────────────
 @app.get("/", tags=["Health"])
@@ -106,6 +113,7 @@ async def root():
             "blocklist": "GET /api/containment/blocklist",
             "isolated_instances": "GET /api/containment/isolated",
             "containment_summary": "GET /api/containment/summary",
+            "dashboard": "/dashboard",
         },
     }
 
