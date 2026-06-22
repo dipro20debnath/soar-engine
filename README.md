@@ -4,7 +4,7 @@
 
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-242%20passing-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-270%20passing-brightgreen.svg)](#testing)
 
 ## Overview
 
@@ -25,7 +25,9 @@ Raw SIEM Alert → Normalize → Enrich (AbuseIPDB + VirusTotal) → Risk Score 
 - **Response Playbooks** — 5 dedicated playbooks + 1 default, with enrichment-driven escalation
 - **Automated Containment** — IP blocking, host isolation, file quarantine, account locking
 - **Approval Workflow** — High-impact actions on critical alerts require human approval
-- **RESTful API** — 25+ endpoints with interactive Swagger docs
+- **SOC Dashboard** — Beautiful dark-themed dashboard with live charts, alerts table, and containment controls
+- **SQLite Persistence** — Alerts and playbooks are persistently stored using SQLite
+- **RESTful API** — 30+ endpoints with interactive Swagger docs
 
 ---
 
@@ -61,7 +63,13 @@ soar-engine/
 │   │   ├── alerts.py                  # GET /api/alerts — Query & enrichment endpoints
 │   │   └── playbooks.py              # Containment & approval workflow endpoints
 │   └── db/
-│       └── store.py                   # In-memory alert store with CRUD
+│       ├── store.py                   # Store factory (switches between memory/sqlite)
+│       ├── sqlite_store.py            # SQLite persistent alert store
+│       └── memory_store.py            # In-memory fallback alert store
+├── dashboard/
+│   ├── index.html                     # Dashboard UI
+│   ├── style.css                      # SOC-themed CSS (glassmorphism)
+│   └── app.js                         # Live API integration & Chart.js
 ├── tests/
 │   ├── test_normalizer.py            # 27 normalization tests
 │   ├── test_store.py                 # 14 alert store tests
@@ -69,7 +77,8 @@ soar-engine/
 │   ├── test_risk_scorer.py           # 30 risk scoring tests
 │   ├── test_playbook_engine.py       # 69 playbook & engine tests
 │   ├── test_containment.py           # 38 containment & approval tests
-│   └── test_integration.py           # 44 end-to-end API tests
+│   ├── test_integration.py           # 44 end-to-end API tests
+│   └── test_sqlite_store.py          # 28 SQLite persistence tests
 ├── simulator/
 │   └── generate_alerts.py            # SIEM alert simulator for testing
 ├── requirements.txt
@@ -112,9 +121,10 @@ VIRUSTOTAL_API_KEY=your_key_here
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 4. Open Swagger Docs
+### 4. Open the Dashboards
 
-Navigate to [http://localhost:8000/docs](http://localhost:8000/docs) to explore the interactive API documentation.
+- **SOC Dashboard**: Navigate to [http://localhost:8000/dashboard/](http://localhost:8000/dashboard/)
+- **Swagger API Docs**: Navigate to [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ### 5. Send a Test Alert
 
@@ -257,7 +267,7 @@ The weighted risk scoring algorithm combines four factors:
 Run the full test suite:
 
 ```bash
-# All 242 tests
+# All 270 tests
 pytest tests/ -v
 
 # By module
@@ -268,6 +278,7 @@ pytest tests/test_risk_scorer.py -v      # 30 risk scoring tests
 pytest tests/test_playbook_engine.py -v  # 69 playbook tests
 pytest tests/test_containment.py -v      # 38 containment tests
 pytest tests/test_integration.py -v      # 44 integration tests
+pytest tests/test_sqlite_store.py -v     # 28 SQLite tests
 ```
 
 ---
@@ -294,7 +305,7 @@ pytest tests/test_integration.py -v      # 44 integration tests
                                                                   │
                    ┌──────────────┐    ┌──────────────┐    ┌──────▼───────┐
                    │  Alert Store │◀───│ Containment  │◀───│   Playbook   │
-                   │  (In-Memory) │    │ (FW/ISO/SOC) │    │   Engine     │
+                   │   (SQLite)   │    │ (FW/ISO/SOC) │    │   Engine     │
                    └──────────────┘    └──────────────┘    └──────────────┘
                                               │
                                        ┌──────▼───────┐
